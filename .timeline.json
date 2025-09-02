@@ -1,7 +1,13 @@
 {
   "timeline_index": 2,
+  "planner": {},
+  "gallery_last_file": {},
+  "timeline_status": {},
+  "preview_servers": {},
   "preview_server": {
     "project_dir": "/workspace/shadcn-ui",
+    "status": "initializing",
+    "config_path": ".mgx/config.yaml",
     "timeline_index": 2
   }
 }

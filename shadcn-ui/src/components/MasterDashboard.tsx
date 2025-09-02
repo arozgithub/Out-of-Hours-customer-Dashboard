@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Job, Customer } from '@/types/job';
 import { getStatusColor, getPriorityColor } from '@/lib/jobUtils';
+import EngineerDashboard from '@/components/EngineerDashboard';
 import { 
   Search, 
   Filter, 
@@ -19,7 +21,9 @@ import {
   Calendar,
   MapPin,
   User,
-  Phone
+  Phone,
+  Settings,
+  Monitor
 } from 'lucide-react';
 
 interface MasterDashboardProps {
@@ -28,6 +32,9 @@ interface MasterDashboardProps {
   onJobCreate: () => void;
   onJobClick: (job: Job) => void;
   onCustomerSelect: (customer: Customer) => void;
+  onAcceptJob?: (jobId: string, status: Job['status'], reason?: string) => void;
+  onDeclineJob?: (jobId: string, status: Job['status'], reason?: string) => void;
+  onSwitchToEngineerMode?: () => void;
 }
 
 export default function MasterDashboard({ 
@@ -35,11 +42,15 @@ export default function MasterDashboard({
   customers, 
   onJobCreate, 
   onJobClick,
-  onCustomerSelect 
+  onCustomerSelect,
+  onAcceptJob,
+  onDeclineJob,
+  onSwitchToEngineerMode
 }: MasterDashboardProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<string>('portal');
 
   // Filter jobs based on search and filters
   const filteredJobs = jobs.filter(job => {
@@ -91,20 +102,46 @@ export default function MasterDashboard({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Master Dashboard</h1>
-          <p className="text-muted-foreground">Out of Hours Support Management</p>
+      {/* View Mode Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex items-center justify-between mb-6">
+          <TabsContent value="portal" className="m-0">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+              <p className="text-muted-foreground">Out of Hours Support Management</p>
+            </div>
+          </TabsContent>
+          <TabsContent value="engineer" className="m-0">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Engineer Dashboard</h1>
+              <p className="text-muted-foreground">Manage your assigned jobs</p>
+            </div>
+          </TabsContent>
+          
+          <div className="flex items-center space-x-4">
+            <TabsList className="grid w-[300px] grid-cols-2">
+              <TabsTrigger value="portal" className="flex items-center space-x-2">
+                <Monitor className="h-4 w-4" />
+                <span>Portal</span>
+              </TabsTrigger>
+              <TabsTrigger value="engineer" className="flex items-center space-x-2">
+                <User className="h-4 w-4" />
+                <span>Engineer</span>
+              </TabsTrigger>
+            </TabsList>
+            {activeTab === "portal" && (
+              <Button onClick={onJobCreate} className="bg-blue-600 hover:bg-blue-700">
+                <Plus size={16} className="mr-2" />
+                Log New Job
+              </Button>
+            )}
+          </div>
         </div>
-        <Button onClick={onJobCreate} className="bg-blue-600 hover:bg-blue-700">
-          <Plus size={16} className="mr-2" />
-          Log New Job
-        </Button>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        {/* Portal View Content */}
+        <TabsContent value="portal" className="space-y-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -373,6 +410,38 @@ export default function MasterDashboard({
           <p className="text-muted-foreground">Try adjusting your search or filters</p>
         </div>
       )}
+        </TabsContent>
+
+        {/* Engineer View Content */}
+        <TabsContent value="engineer" className="space-y-6">
+          {onAcceptJob && onDeclineJob ? (
+            <div className="space-y-6">
+              <div className="flex items-center justify-end">
+                {onSwitchToEngineerMode && (
+                  <Button 
+                    onClick={onSwitchToEngineerMode}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    Full Engineer Mode
+                  </Button>
+                )}
+              </div>
+              <EngineerDashboard
+                jobs={jobs}
+                onAcceptJob={onAcceptJob}
+                onDeclineJob={onDeclineJob}
+              />
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <User className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Engineer View Not Available</h3>
+              <p className="text-muted-foreground">Engineer actions are not configured</p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

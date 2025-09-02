@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -270,20 +271,379 @@ export default function JobLogWizard({ customers, onJobCreate, onCancel }: JobLo
             ))}
           </div>
 
-          {/* Step content rendered here - using simplified content for now */}
-          <div className="text-center py-10 mb-6">
-            <h3 className="text-xl font-bold">Step {currentStep}: {
-              currentStep === 1 ? "Reporter Details" :
-              currentStep === 2 ? "Job Details" :
-              currentStep === 3 ? "Job Type & KPI" :
-              currentStep === 4 ? "Engineer Selection" :
-              "Job Allocation"
-            }</h3>
-            <p className="text-muted-foreground mt-2">
-              This is a simplified version of step {currentStep}.<br/>
-              Job Log Wizard is being fixed.
-            </p>
-          </div>
+          {/* Step 1: Reporter Details */}
+          {currentStep === 1 && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-4">
+                <User size={20} className="text-blue-600" />
+                <h3 className="text-xl font-bold">Reporter Details</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Customer *</label>
+                  <Select value={formData.customer} onValueChange={(value) => updateFormData({ customer: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select customer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.name}>
+                          {customer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Site *</label>
+                  <Input
+                    placeholder="Enter site location"
+                    value={formData.site}
+                    onChange={(e) => updateFormData({ site: e.target.value })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Reporter Name *</label>
+                  <Input
+                    placeholder="Enter reporter name"
+                    value={formData.reporterName}
+                    onChange={(e) => updateFormData({ reporterName: e.target.value })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Reporter Phone *</label>
+                  <Input
+                    type="tel"
+                    placeholder="Enter phone number"
+                    value={formData.reporterPhone}
+                    onChange={(e) => updateFormData({ reporterPhone: e.target.value })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Reporter Email</label>
+                  <Input
+                    type="email"
+                    placeholder="Enter email address"
+                    value={formData.reporterEmail}
+                    onChange={(e) => updateFormData({ reporterEmail: e.target.value })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Relationship</label>
+                  <Input
+                    placeholder="e.g., Site Manager"
+                    value={formData.reporterRelationship}
+                    onChange={(e) => updateFormData({ reporterRelationship: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Job Details */}
+          {currentStep === 2 && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Briefcase size={20} className="text-blue-600" />
+                <h3 className="text-xl font-bold">Job Details</h3>
+              </div>
+              
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Job Description *</label>
+                  <Textarea
+                    placeholder="Describe the issue or work required..."
+                    value={formData.description}
+                    onChange={(e) => updateFormData({ description: e.target.value })}
+                    rows={4}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Job Nature *</label>
+                    <Select value={formData.jobNature} onValueChange={(value) => updateFormData({ jobNature: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select job nature" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Reactive">Reactive</SelectItem>
+                        <SelectItem value="Planned">Planned</SelectItem>
+                        <SelectItem value="Preventive">Preventive</SelectItem>
+                        <SelectItem value="Emergency">Emergency</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Job Owner *</label>
+                    <Input
+                      placeholder="Enter job owner name"
+                      value={formData.jobOwner}
+                      onChange={(e) => updateFormData({ jobOwner: e.target.value })}
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Skills Required</label>
+                  <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-gray-50 min-h-[60px]">
+                    {mockJobTrades.map(trade => (
+                      <Badge
+                        key={trade}
+                        variant={formData.skillsRequired.includes(trade) ? "default" : "outline"}
+                        className="cursor-pointer hover:bg-blue-100"
+                        onClick={() => {
+                          const skills = formData.skillsRequired.includes(trade)
+                            ? formData.skillsRequired.filter(s => s !== trade)
+                            : [...formData.skillsRequired, trade];
+                          updateFormData({ skillsRequired: skills });
+                        }}
+                      >
+                        {trade}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Contact Name *</label>
+                    <Input
+                      placeholder="Enter contact name"
+                      value={formData.contactName}
+                      onChange={(e) => updateFormData({ contactName: e.target.value })}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Contact Phone *</label>
+                    <Input
+                      type="tel"
+                      placeholder="Enter contact phone"
+                      value={formData.contactPhone}
+                      onChange={(e) => updateFormData({ contactPhone: e.target.value })}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Contact Email</label>
+                    <Input
+                      type="email"
+                      placeholder="Enter contact email"
+                      value={formData.contactEmail}
+                      onChange={(e) => updateFormData({ contactEmail: e.target.value })}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Contact Relationship</label>
+                    <Input
+                      placeholder="e.g., Maintenance Manager"
+                      value={formData.contactRelationship}
+                      onChange={(e) => updateFormData({ contactRelationship: e.target.value })}
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="emergency"
+                    checked={formData.isEmergency}
+                    onCheckedChange={(checked) => updateFormData({ isEmergency: !!checked })}
+                  />
+                  <label htmlFor="emergency" className="text-sm font-medium">
+                    Mark as Emergency
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Job Type & KPI */}
+          {currentStep === 3 && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Settings size={20} className="text-blue-600" />
+                <h3 className="text-xl font-bold">Job Type & KPI</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Job Type *</label>
+                  <Select value={formData.jobType} onValueChange={(value) => updateFormData({ jobType: value as 'OOH' | 'CallOut' })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="OOH">Out of Hours (OOH)</SelectItem>
+                      <SelectItem value="CallOut">Call Out</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Primary Trade *</label>
+                  <Select value={formData.primaryTrade} onValueChange={(value) => updateFormData({ primaryTrade: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select primary trade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockJobTrades.map(trade => (
+                        <SelectItem key={trade} value={trade}>
+                          {trade}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Response Time (minutes) *</label>
+                  <Input
+                    type="number"
+                    min="15"
+                    max="480"
+                    value={formData.responseTime}
+                    onChange={(e) => updateFormData({ responseTime: parseInt(e.target.value) || 60 })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Priority *</label>
+                  <Select value={formData.priority} onValueChange={(value) => updateFormData({ priority: value as Job['priority'] })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Low">Low</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="High">High</SelectItem>
+                      <SelectItem value="Critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {formData.isEmergency && (
+                <Card className="bg-red-50 border-red-200">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-2 text-red-600 mb-2">
+                      <span className="font-medium">Emergency Job - Enhanced SLA</span>
+                    </div>
+                    <div className="text-sm text-red-700">
+                      Accept: 5 min | On Site: 15 min | Completed: 30 min
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* Step 4: Engineer Selection */}
+          {currentStep === 4 && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Users size={20} className="text-blue-600" />
+                <h3 className="text-xl font-bold">Engineer Selection</h3>
+              </div>
+              
+              <div className="space-y-4">
+                <h4 className="font-medium">Available Engineers ({formData.jobType})</h4>
+                <div className="space-y-3">
+                  {formData.availableEngineers.map((engineer) => (
+                    <Card
+                      key={engineer.name}
+                      className={`cursor-pointer transition-colors ${
+                        formData.selectedEngineer === engineer.name ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'
+                      }`}
+                      onClick={() => updateFormData({ selectedEngineer: engineer.name })}
+                    >
+                      <CardContent className="pt-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full ${
+                              engineer.status === 'accept' ? 'bg-green-500' :
+                              engineer.status === 'onsite' ? 'bg-blue-500' :
+                              engineer.status === 'completed' ? 'bg-gray-400' : 'bg-yellow-500'
+                            }`} />
+                            <div>
+                              <div className="font-medium">{engineer.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                Status: {engineer.status.replace('_', ' ')}
+                              </div>
+                            </div>
+                          </div>
+                          <Badge variant="outline">
+                            {engineer.currentJobs} active job{engineer.currentJobs !== 1 ? 's' : ''}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+                
+                {formData.selectedEngineer && (
+                  <div className="flex items-center space-x-2 mt-4">
+                    <Checkbox
+                      id="callConfirmed"
+                      checked={formData.callConfirmed}
+                      onCheckedChange={(checked) => updateFormData({ callConfirmed: !!checked })}
+                    />
+                    <label htmlFor="callConfirmed" className="text-sm font-medium">
+                      Engineer call confirmed
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Job Allocation */}
+          {currentStep === 5 && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-4">
+                <CheckCircle size={20} className="text-blue-600" />
+                <h3 className="text-xl font-bold">Job Allocation</h3>
+              </div>
+              
+              <Card className="bg-green-50 border-green-200">
+                <CardContent className="pt-6">
+                  <h4 className="font-medium text-green-800 mb-4">Job Summary</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div><span className="font-medium">Job Number:</span> {formData.jobNumber}</div>
+                    <div><span className="font-medium">Customer:</span> {formData.customer}</div>
+                    <div><span className="font-medium">Site:</span> {formData.site}</div>
+                    <div><span className="font-medium">Type:</span> {formData.jobType}</div>
+                    <div><span className="font-medium">Priority:</span> {formData.priority}</div>
+                    <div><span className="font-medium">Selected Engineer:</span> {formData.selectedEngineer}</div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Final Engineer Assignment *</label>
+                <Select value={formData.finalEngineer} onValueChange={(value) => updateFormData({ finalEngineer: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Confirm engineer assignment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {formData.availableEngineers.map((engineer) => (
+                      <SelectItem key={engineer.name} value={engineer.name}>
+                        {engineer.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-between mt-8 pt-6 border-t">
             <Button variant="outline" onClick={prevStep} disabled={currentStep === 1}>

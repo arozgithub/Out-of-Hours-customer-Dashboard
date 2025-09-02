@@ -33,18 +33,20 @@ export interface Job {
   engineer: string;
   contact: JobContact;
   reporter: Reporter;
-  status: 'green' | 'amber' | 'red';
+  status: 'green' | 'amber' | 'red' | 'completed';
   priority: 'Low' | 'Medium' | 'High' | 'Critical';
   dateLogged: Date;
   dateAccepted: Date | null;
   dateOnSite: Date | null;
   dateCompleted: Date | null;
   description: string;
-  jobType: 'Maintenance' | 'Repair' | 'Installation' | 'Emergency' | 'Inspection';
-  category: 'Electrical' | 'Mechanical' | 'Plumbing' | 'HVAC' | 'General';
+  jobType: 'Maintenance' | 'Repair' | 'Installation' | 'Emergency' | 'Inspection' | 'Draft' | 'Out of Hours' | 'Call Out';
+  category: 'Electrical' | 'Mechanical' | 'Plumbing' | 'HVAC' | 'General' | 'Fire Safety' | 'Security Systems' | 'Painting' | 'Flooring' | 'Roofing';
   targetCompletionTime: number; // minutes
   reason: string | null;
   customAlerts: CustomAlerts;
+  createdAt: Date;
+  updatedAt: Date;
   // Additional JobLogic fields
   primaryJobTrade?: string;
   secondaryJobTrades?: string[];
@@ -62,6 +64,7 @@ export interface Job {
   deployToMobile?: boolean;
   isRecurringJob?: boolean;
   completionTimeFromEngineerOnsite?: boolean;
+  project?: string;
 }
 
 export interface JobFormData {
@@ -97,8 +100,10 @@ export interface JobFormData {
 }
 
 export interface Customer {
-  id: number;
+  id: string;
   name: string;
+  email: string;
+  phone: string;
   sites: string[];
 }
 
@@ -109,4 +114,5 @@ export interface Engineer {
   status: 'accept' | 'onsite' | 'travel' | 'completed' | 'require_revisit';
   syncStatus: 'synced' | 'pending' | 'error';
   avatar?: string;
+  currentJobs: number;
 }
