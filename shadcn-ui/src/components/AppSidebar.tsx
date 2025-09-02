@@ -71,12 +71,6 @@ export function AppSidebar({ currentView, onViewChange, jobCount = 0, alertCount
       badge: jobCount > 0 ? jobCount.toString() : undefined,
     },
     {
-      title: 'Engineer Portal',
-      icon: User,
-      view: 'engineerPortal' as View,
-      badge: jobs.filter(j => j.status === 'amber').length > 0 ? jobs.filter(j => j.status === 'amber').length.toString() : undefined,
-    },
-    {
       title: 'Create Job',
       icon: Plus,
       view: 'wizard' as View,
