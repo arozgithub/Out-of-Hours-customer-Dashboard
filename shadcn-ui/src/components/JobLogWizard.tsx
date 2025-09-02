@@ -132,9 +132,14 @@ export default function JobLogWizard({ customers, onJobCreate, onCancel }: JobLo
       engineer: 'Unassigned',
       status: 'amber',
       priority: formData.priority,
-      category: formData.primaryTrade || 'General',
+      category: (formData.primaryTrade || 'General') as Job['category'],
       jobType: 'Draft',
       targetCompletionTime: 240,
+      dateLogged: new Date(),
+      dateAccepted: null,
+      dateOnSite: null,
+      dateCompleted: null,
+      reason: null,
       createdAt: new Date(),
       updatedAt: new Date(),
       contact: {
@@ -187,9 +192,14 @@ export default function JobLogWizard({ customers, onJobCreate, onCancel }: JobLo
       engineer: formData.finalEngineer,
       status: 'amber',
       priority: formData.priority,
-      category: formData.primaryTrade,
+      category: formData.primaryTrade as Job['category'],
       jobType: formData.jobType === 'OOH' ? 'Out of Hours' : 'Call Out',
       targetCompletionTime: formData.responseTime,
+      dateLogged: new Date(),
+      dateAccepted: null,
+      dateOnSite: null,
+      dateCompleted: null,
+      reason: null,
       createdAt: new Date(),
       updatedAt: new Date(),
       contact: {
@@ -659,7 +669,10 @@ export default function JobLogWizard({ customers, onJobCreate, onCancel }: JobLo
             )}
             
             {currentStep < 5 && (
-              <Button onClick={nextStep}>
+              <Button 
+                onClick={nextStep} 
+                disabled={!isStepValid(currentStep)}
+              >
                 Next
                 <ArrowRight size={16} className="ml-2" />
               </Button>
