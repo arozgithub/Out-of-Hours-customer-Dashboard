@@ -5,15 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Job } from '@/types/job';
-import { Clock, User, MapPin, Phone, Mail, AlertTriangle, CheckCircle, Wrench } from 'lucide-react';
+import { Clock, User, MapPin, Phone, Mail, AlertTriangle, CheckCircle, Wrench, Edit } from 'lucide-react';
 import { format, isValid } from 'date-fns';
 
 interface JobCardProps {
   job: Job;
   onUpdateStatus: (jobId: string, status: Job['status'], reason?: string) => void;
+  onJobClick?: (job: Job) => void;
 }
 
-export default function JobCard({ job, onUpdateStatus }: JobCardProps) {
+export default function JobCard({ job, onUpdateStatus, onJobClick }: JobCardProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [statusReason, setStatusReason] = useState('');
 
@@ -99,204 +100,86 @@ export default function JobCard({ job, onUpdateStatus }: JobCardProps) {
   };
 
   return (
-    <Card className="shadow-md hover:shadow-lg transition-shadow duration-200">
-      <CardHeader className="pb-4">
+    <Card 
+      className={`shadow-sm hover:shadow-md transition-all duration-200 ${
+        onJobClick ? 'cursor-pointer hover:bg-gray-50 hover:border-blue-300' : ''
+      }`}
+      onClick={onJobClick ? () => onJobClick(job) : undefined}
+      title={onJobClick ? "Click to view job details" : undefined}
+    >
+      <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-4 h-4 rounded-full ${getStatusColor(job.status)}`} />
+          <div className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${getStatusColor(job.status)}`} />
             <div>
-              <CardTitle className="text-lg font-semibold text-gray-900">
+              <CardTitle className="text-base font-semibold text-gray-900">
                 {job.jobNumber}
               </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                {job.customer} • {job.site}
+              <p className="text-xs text-muted-foreground">
+                {job.customer}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge className={getPriorityColor(job.priority)}>
+          <div className="flex items-center gap-1">
+            <Badge className={`${getPriorityColor(job.priority)} text-xs py-0 px-2`}>
               {job.priority}
             </Badge>
-            <Badge variant="outline">
-              {job.category}
-            </Badge>
+            {onJobClick && (
+              <div className="ml-1 text-gray-400 hover:text-gray-600 transition-colors">
+                <Edit size={12} />
+              </div>
+            )}
           </div>
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-4">
-        {/* Job Description */}
+      <CardContent className="space-y-2 pt-0">
+        {/* Job Description - Truncated */}
         <div>
-          <p className="text-sm text-gray-700 leading-relaxed">
+          <p className="text-sm text-gray-700 line-clamp-2">
             {job.description}
           </p>
         </div>
 
-        {/* Job Details Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <User size={16} className="text-blue-600" />
-            <span className="text-gray-600">Engineer:</span>
-            <span className="font-medium">{job.engineer}</span>
+        {/* Key Details - Compact Grid */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="flex items-center gap-1">
+            <User size={12} className="text-blue-600" />
+            <span className="truncate">{job.engineer}</span>
           </div>
           
-          <div className="flex items-center gap-2">
-            <Wrench size={16} className="text-green-600" />
-            <span className="text-gray-600">Trade:</span>
-            <span className="font-medium">{job.primaryJobTrade}</span>
+          <div className="flex items-center gap-1">
+            <MapPin size={12} className="text-green-600" />
+            <span className="truncate">{job.site}</span>
           </div>
           
-          <div className="flex items-center gap-2">
-            <Clock size={16} className="text-amber-600" />
-            <span className="text-gray-600">Created:</span>
-            <span className="font-medium">{formatTimeElapsed(job.createdAt)}</span>
+          <div className="flex items-center gap-1">
+            <Wrench size={12} className="text-purple-600" />
+            <span className="truncate">{job.primaryJobTrade}</span>
           </div>
           
-          <div className="flex items-center gap-2">
-            <AlertTriangle size={16} className="text-red-600" />
-            <span className="text-gray-600">Target:</span>
-            <span className="font-medium">{job.targetCompletionTime}min</span>
+          <div className="flex items-center gap-1">
+            <Clock size={12} className="text-amber-600" />
+            <span>{formatTimeElapsed(job.createdAt)}</span>
           </div>
         </div>
 
-        {/* Contact Information */}
-        <div className="bg-gray-50 p-3 rounded-lg">
-          <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-            <User size={16} />
-            Contact Information
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-gray-600">Name:</span>
-              <span className="font-medium">{job.contact.name}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Phone size={12} />
-              <span className="font-medium">{job.contact.number}</span>
-            </div>
-            {job.contact.email && (
-              <div className="flex items-center gap-2">
-                <Mail size={12} />
-                <span className="font-medium">{job.contact.email}</span>
-              </div>
-            )}
-            {job.contact.relationship && (
-              <div className="flex items-center gap-2">
-                <span className="text-gray-600">Role:</span>
-                <span className="font-medium">{job.contact.relationship}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* SLA Alerts */}
-        <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-          <h4 className="font-medium text-blue-900 mb-2">SLA Settings</h4>
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            <div className="text-center">
-              <div className="text-blue-700 font-medium">Accept</div>
-              <div className="text-blue-600">{job.customAlerts.acceptSLA}min</div>
-            </div>
-            <div className="text-center">
-              <div className="text-blue-700 font-medium">On Site</div>
-              <div className="text-blue-600">{job.customAlerts.onsiteSLA}min</div>
-            </div>
-            <div className="text-center">
-              <div className="text-blue-700 font-medium">Complete</div>
-              <div className="text-blue-600">{job.customAlerts.completedSLA}min</div>
+        {/* Contact - Compact */}
+        <div className="bg-gray-50 p-2 rounded text-xs">
+          <div className="flex items-center justify-between">
+            <span className="font-medium truncate">{job.contact.name}</span>
+            <div className="flex items-center gap-1">
+              <Phone size={10} />
+              <span className="text-muted-foreground">{job.contact.number}</span>
             </div>
           </div>
         </div>
 
-        {/* Tags */}
-        {job.tags && job.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {job.tags.map(tag => (
-              <Badge key={tag} variant="secondary" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
+        {onJobClick && (
+          <div className="text-center mt-2 text-blue-600 text-xs font-medium opacity-70">
+            💡 Click to view details
           </div>
         )}
-
-        {/* Timestamps */}
-        <div className="text-xs text-muted-foreground border-t pt-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
-            <div>Created: {formatDate(job.createdAt)}</div>
-            <div>Updated: {formatDate(job.updatedAt)}</div>
-            {job.startDate && (
-              <div>Started: {formatDate(job.startDate)}</div>
-            )}
-            {job.endDate && (
-              <div>Target End: {formatDate(job.endDate)}</div>
-            )}
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2 pt-2 border-t">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleStatusUpdate('green')}
-            className="flex-1"
-          >
-            <CheckCircle size={16} className="mr-1" />
-            Complete
-          </Button>
-          
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="flex-1">
-                <AlertTriangle size={16} className="mr-1" />
-                Update Status
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Update Job Status</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Job: {job.jobNumber} - {job.description}
-                  </p>
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium">Status Reason (Optional)</label>
-                  <Textarea
-                    placeholder="Enter reason for status change..."
-                    value={statusReason}
-                    onChange={(e) => setStatusReason(e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-                
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => handleStatusUpdate('green')}
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                  >
-                    Mark Complete
-                  </Button>
-                  <Button
-                    onClick={() => handleStatusUpdate('amber')}
-                    className="flex-1 bg-amber-600 hover:bg-amber-700"
-                  >
-                    In Progress
-                  </Button>
-                  <Button
-                    onClick={() => handleStatusUpdate('red')}
-                    className="flex-1 bg-red-600 hover:bg-red-700"
-                  >
-                    Issue/Delay
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
       </CardContent>
     </Card>
   );

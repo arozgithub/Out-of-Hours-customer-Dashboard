@@ -15,7 +15,8 @@ import {
   Clock,
   ChevronRight,
   Filter,
-  User
+  User,
+  Palette
 } from 'lucide-react';
 
 import {
@@ -37,6 +38,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Job } from '@/types/job';
 
 type View = 'master' | 'customer' | 'alerts' | 'wizard' | 'customerList' | 'globalAlerts' | 'engineerPortal';
@@ -252,6 +254,15 @@ export function AppSidebar({ currentView, onViewChange, jobCount = 0, alertCount
               <Settings className="h-4 w-4" />
               <span>Settings</span>
             </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <div className="flex items-center justify-between w-full px-2 py-1">
+              <div className="flex items-center gap-2">
+                <Palette className="h-4 w-4" />
+                <span className="text-sm">Theme</span>
+              </div>
+              <ThemeToggle />
+            </div>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton>

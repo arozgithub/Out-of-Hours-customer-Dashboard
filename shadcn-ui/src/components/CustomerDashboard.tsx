@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Job, Customer, Engineer } from '@/types/job';
 import { getStatusColor, getPriorityColor } from '@/lib/jobUtils';
+import CalendarPlanner from '@/components/CalendarPlanner';
 import { 
   ArrowLeft, 
   Building2, 
@@ -15,7 +17,8 @@ import {
   Phone,
   Mail,
   Calendar,
-  FileText
+  FileText,
+  CalendarDays
 } from 'lucide-react';
 
 interface CustomerDashboardProps {
@@ -25,6 +28,8 @@ interface CustomerDashboardProps {
   onBack: () => void;
   onJobClick: (job: Job) => void;
   onAlertsPortal: () => void;
+  onJobAssign?: (jobId: string, engineerId: string, date: Date) => void;
+  onJobUpdate?: (job: Job) => void;
 }
 
 export default function CustomerDashboard({ 
@@ -33,7 +38,9 @@ export default function CustomerDashboard({
   engineers, 
   onBack, 
   onJobClick,
-  onAlertsPortal 
+  onAlertsPortal,
+  onJobAssign = () => {},
+  onJobUpdate = () => {}
 }: CustomerDashboardProps) {
   const [selectedSite, setSelectedSite] = useState<string>('all');
 
@@ -125,32 +132,46 @@ export default function CustomerDashboard({
         </Card>
       </div>
 
-      {/* Site Filter */}
-      {customer.sites && customer.sites.length > 1 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Filter by Site</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={selectedSite === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedSite('all')}
-              >
-                All Sites ({customerJobs.length})
-              </Button>
-              {customer.sites.map(site => {
-                const siteJobCount = customerJobs.filter(job => job.site === site).length;
-                return (
+      {/* Main Content Tabs */}
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Jobs Overview
+          </TabsTrigger>
+          <TabsTrigger value="planner" className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4" />
+            Schedule Planner
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          {/* Site Filter */}
+          {customer.sites && customer.sites.length > 1 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Filter by Site</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
                   <Button
-                    key={site}
-                    variant={selectedSite === site ? 'default' : 'outline'}
+                    variant={selectedSite === 'all' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setSelectedSite(site)}
+                    onClick={() => setSelectedSite('all')}
                   >
-                    {site} ({siteJobCount})
+                    All Sites ({customerJobs.length})
                   </Button>
+                  {customer.sites.map(site => {
+                    const siteJobCount = customerJobs.filter(job => job.site === site).length;
+                    return (
+                      <Button
+                        key={site}
+                        variant={selectedSite === site ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSelectedSite(site)}
+                      >
+                        {site} ({siteJobCount})
+                      </Button>
                 );
               })}
             </div>
@@ -319,6 +340,17 @@ export default function CustomerDashboard({
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="planner" className="space-y-6">
+          <CalendarPlanner
+            jobs={jobs}
+            customer={customer.name}
+            onJobAssign={onJobAssign}
+            onJobUpdate={onJobUpdate}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

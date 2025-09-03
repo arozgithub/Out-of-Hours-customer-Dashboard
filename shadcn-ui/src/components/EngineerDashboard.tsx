@@ -7,22 +7,23 @@ interface EngineerDashboardProps {
   jobs: Job[];
   onAcceptJob: (jobId: string, status: Job['status'], reason?: string) => void;
   onDeclineJob: (jobId: string, status: Job['status'], reason?: string) => void;
+  onJobClick?: (job: Job) => void;
 }
 
-export default function EngineerDashboard({ jobs, onAcceptJob, onDeclineJob }: EngineerDashboardProps) {
+export default function EngineerDashboard({ jobs, onAcceptJob, onDeclineJob, onJobClick }: EngineerDashboardProps) {
   const currentJob = jobs.find(j => j.status === 'amber' || j.status === 'green');
 
   return (
     <div className="space-y-6">
       {/* Current Job Card */}
       {currentJob && (
-        <JobCard job={currentJob} onUpdateStatus={() => {}} />
+        <JobCard job={currentJob} onUpdateStatus={() => {}} onJobClick={onJobClick} />
       )}
       {/* Incoming Jobs */}
       <div className="grid grid-cols-1 gap-4">
         {jobs.filter(j => j.status === 'amber').map(job => (
           <div key={job.id} className="flex items-center gap-2">
-            <JobCard job={job} onUpdateStatus={() => {}} />
+            <JobCard job={job} onUpdateStatus={() => {}} onJobClick={onJobClick} />
             <Button onClick={() => onAcceptJob(job.id, 'amber')}>Accept</Button>
             <Button 
               onClick={() => onDeclineJob(job.id, 'red')}

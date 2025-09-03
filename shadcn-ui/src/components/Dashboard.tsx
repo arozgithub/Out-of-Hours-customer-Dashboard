@@ -14,9 +14,10 @@ interface DashboardProps {
   onUpdateStatus: (jobId: string, status: Job['status'], reason?: string) => void;
   onAcceptJob?: (jobId: string, status: Job['status'], reason?: string) => void;
   onDeclineJob?: (jobId: string, status: Job['status'], reason?: string) => void;
+  onJobClick?: (job: Job) => void;
 }
 
-export default function Dashboard({ jobs, onUpdateStatus, onAcceptJob, onDeclineJob }: DashboardProps) {
+export default function Dashboard({ jobs, onUpdateStatus, onAcceptJob, onDeclineJob, onJobClick }: DashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -170,6 +171,7 @@ export default function Dashboard({ jobs, onUpdateStatus, onAcceptJob, onDecline
                   key={job.id}
                   job={job}
                   onUpdateStatus={onUpdateStatus}
+                  onJobClick={onJobClick}
                 />
               ))
             ) : (
@@ -201,6 +203,7 @@ export default function Dashboard({ jobs, onUpdateStatus, onAcceptJob, onDecline
               jobs={jobs}
               onAcceptJob={onAcceptJob}
               onDeclineJob={onDeclineJob}
+              onJobClick={onJobClick}
             />
           ) : (
             <div className="text-center py-12">

@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Job, Customer } from '@/types/job';
 import { getStatusColor, getPriorityColor } from '@/lib/jobUtils';
 import EngineerDashboard from '@/components/EngineerDashboard';
+import JobCard from '@/components/JobCard';
 import { 
   Search, 
   Filter, 
@@ -321,85 +322,15 @@ export default function MasterDashboard({
       {/* Jobs Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {filteredJobs.map(job => (
-          <Card 
-            key={job.id} 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => onJobClick(job)}
-          >
-            <CardContent className="p-4">
-              <div className="space-y-3">
-                {/* Header */}
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-semibold text-sm">{job.jobNumber}</p>
-                    <p className="text-xs text-muted-foreground">{job.customer}</p>
-                  </div>
-                  <div className="flex flex-col items-end space-y-1">
-                    <Badge 
-                      variant="secondary" 
-                      className={`${getStatusColor(job.status)} text-white text-xs`}
-                    >
-                      {job.status === 'green' ? 'Completed' : 
-                       job.status === 'amber' ? 'In Progress' : 'Overdue'}
-                    </Badge>
-                    <Badge 
-                      variant="outline" 
-                      className={`${getPriorityColor(job.priority)} text-xs`}
-                    >
-                      {job.priority}
-                    </Badge>
-                  </div>
-                </div>
-
-                {/* Site and Description */}
-                <div className="space-y-1">
-                  <div className="flex items-center space-x-1">
-                    <MapPin className="h-3 w-3 text-gray-400" />
-                    <p className="text-xs font-medium">{job.site}</p>
-                  </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {job.description}
-                  </p>
-                </div>
-
-                {/* Engineer */}
-                <div className="flex items-center space-x-1">
-                  <User className="h-3 w-3 text-gray-400" />
-                  <p className="text-xs">{job.engineer}</p>
-                </div>
-
-                {/* SLA Information */}
-                <div className="bg-gray-50 p-2 rounded text-xs space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Accept SLA:</span>
-                    <span className="font-medium">{job.customAlerts?.acceptSLA || 30}min</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Onsite SLA:</span>
-                    <span className="font-medium">{job.customAlerts?.onsiteSLA || 90}min</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Complete SLA:</span>
-                    <span className="font-medium">{job.customAlerts?.completedSLA || 180}min</span>
-                  </div>
-                </div>
-
-                {/* Alerts */}
-                {(job.status === 'red' || job.priority === 'Critical') && (
-                  <div className="flex items-center space-x-1 text-red-600">
-                    <AlertTriangle className="h-3 w-3" />
-                    <p className="text-xs font-medium">Alert Active</p>
-                  </div>
-                )}
-
-                {/* Time */}
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{job.createdAt.toLocaleDateString()}</span>
-                  <span>{job.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <JobCard
+            key={job.id}
+            job={job}
+            onUpdateStatus={(jobId, status, reason) => {
+              // Handle status updates in master dashboard context
+              console.log('Status update requested:', jobId, status, reason);
+            }}
+            onJobClick={onJobClick}
+          />
         ))}
       </div>
 
@@ -431,6 +362,7 @@ export default function MasterDashboard({
                 jobs={jobs}
                 onAcceptJob={onAcceptJob}
                 onDeclineJob={onDeclineJob}
+                onJobClick={onJobClick}
               />
             </div>
           ) : (

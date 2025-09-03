@@ -1,71 +1,60 @@
 import { useState } from 'react';
 import { Job, Customer } from '@/types/job';
-import { mockJobs, mockCustomers, mockEngineers } from '@/lib/jobUtils';
+import { useJob } from '@/hooks/useJob';
+import { mockEngineers } from '@/lib/jobUtils';
 import MasterDashboard from '@/components/MasterDashboard';
 import CustomerDashboard from '@/components/CustomerDashboard';
 import CustomerAlertsPortal from '@/components/CustomerAlertsPortal';
 import GlobalAlertsPortal from '@/components/GlobalAlertsPortal';
 import JobLogWizard from '@/components/JobLogWizard';
 import JobEditModal from '@/components/JobEditModal';
+import JobViewModal from '@/components/JobViewModal';
 import CustomerListPage from '@/pages/CustomerListPage';
 import Dashboard from '@/components/Dashboard';
 import EngineerInterface from '@/components/EngineerInterface';
+import FloatingChatbot from '@/components/FloatingChatbot';
 import { AppLayout } from '@/components/AppLayout';
 
 type View = 'master' | 'customer' | 'alerts' | 'wizard' | 'customerList' | 'globalAlerts' | 'engineerPortal' | 'engineerMode';
 
 export default function Index() {
-  const [jobs, setJobs] = useState<Job[]>(mockJobs);
-  const [customers] = useState<Customer[]>(mockCustomers);
+  // Use JobContext instead of local state
+  const { jobs, customers, addJob, updateJob } = useJob();
+  
   const [currentView, setCurrentView] = useState<View>('master');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   const handleJobCreate = (newJob: Omit<Job, 'id'>) => {
-    const jobWithId: Job = {
-      ...newJob,
-      id: `job-${Date.now()}`
-    };
-    setJobs(prev => [jobWithId, ...prev]);
+    addJob(newJob);
     setCurrentView('master');
   };
 
   const handleJobClick = (job: Job) => {
     setSelectedJob(job);
-    setIsEditModalOpen(true);
+    setIsViewModalOpen(true);
   };
 
   const handleJobSave = (updatedJob: Job) => {
-    setJobs(prev => prev.map(job => 
-      job.id === updatedJob.id ? updatedJob : job
-    ));
+    updateJob(updatedJob.id, updatedJob);
     setSelectedJob(null);
   };
 
   const handleAcceptJob = (jobId: string, status: Job['status'], reason?: string) => {
-    setJobs(prev => prev.map(job => 
-      job.id === jobId 
-        ? { 
-            ...job, 
-            status, 
-            dateAccepted: status === 'green' ? new Date() : job.dateAccepted,
-            reason: reason || job.reason 
-          } 
-        : job
-    ));
+    updateJob(jobId, {
+      status,
+      dateAccepted: status === 'green' ? new Date() : undefined,
+      reason: reason || undefined
+    });
   };
 
   const handleDeclineJob = (jobId: string, status: Job['status'], reason?: string) => {
-    setJobs(prev => prev.map(job => 
-      job.id === jobId 
-        ? { 
-            ...job, 
-            status, 
-            reason: reason || job.reason 
-          } 
-        : job
-    ));
+    updateJob(jobId, {
+      status,
+      reason: reason || undefined
+    });
   };
 
   const handleSwitchToEngineerMode = () => {
@@ -77,33 +66,36 @@ export default function Index() {
   };
 
   const handleJobAccept = (jobId: string, status: Job['status'], reason?: string) => {
-    setJobs(prev => prev.map(job => 
-      job.id === jobId 
-        ? { 
-            ...job, 
-            status, 
-            dateAccepted: status === 'green' ? new Date() : job.dateAccepted,
-            reason: reason || job.reason 
-          } 
-        : job
-    ));
+    updateJob(jobId, {
+      status,
+      dateAccepted: status === 'green' ? new Date() : undefined,
+      reason: reason || undefined
+    });
   };
 
   const handleJobDecline = (jobId: string, status: Job['status'], reason?: string) => {
-    setJobs(prev => prev.map(job => 
-      job.id === jobId 
-        ? { 
-            ...job, 
-            status: 'red', 
-            reason: reason || 'Job declined by engineer' 
-          } 
-        : job
-    ));
+    updateJob(jobId, {
+      status: 'red',
+      reason: reason || 'Job declined by engineer'
+    });
   };
 
   const handleCustomerSelect = (customer: Customer) => {
     setSelectedCustomer(customer);
     setCurrentView('customer');
+  };
+
+  const handleJobAssign = (jobId: string, engineerId: string, date: Date) => {
+    updateJob(jobId, {
+      engineer: engineerId,
+      status: 'amber' as const,
+      startDate: date,
+      dateAccepted: new Date()
+    });
+  };
+
+  const handleJobUpdate = (updatedJob: Job) => {
+    updateJob(updatedJob.id, updatedJob);
   };
 
   // Calculate counts for sidebar
@@ -164,6 +156,8 @@ export default function Index() {
             onBack={() => setCurrentView('customerList')}
             onJobClick={handleJobClick}
             onAlertsPortal={() => setCurrentView('alerts')}
+            onJobAssign={handleJobAssign}
+            onJobUpdate={handleJobUpdate}
           />
         ) : null;
       
@@ -199,12 +193,11 @@ export default function Index() {
           <Dashboard
             jobs={jobs}
             onUpdateStatus={(jobId, status, reason) => {
-              setJobs(prev => prev.map(job => 
-                job.id === jobId ? { ...job, status, reason } : job
-              ));
+              updateJob(jobId, { status, reason });
             }}
             onAcceptJob={handleJobAccept}
             onDeclineJob={handleJobDecline}
+            onJobClick={handleJobClick}
           />
         );
       
@@ -237,30 +230,54 @@ export default function Index() {
           }}
           onSave={handleJobSave}
         />
+        
+        {/* Floating Chatbot for AI-assisted job creation */}
+        <FloatingChatbot 
+          customers={customers}
+          onJobCreate={handleJobCreate}
+        />
       </>
     );
   }
 
   return (
-    <AppLayout
-      currentView={currentView}
-      onViewChange={setCurrentView}
-      jobCount={jobCount}
-      alertCount={alertCount}
-      breadcrumbTitle={getBreadcrumbTitle()}
-      jobs={jobs}
-    >
-      {renderCurrentView()}
+    <>
+      <AppLayout
+        currentView={currentView}
+        onViewChange={setCurrentView}
+        jobCount={jobCount}
+        alertCount={alertCount}
+        breadcrumbTitle={getBreadcrumbTitle()}
+        jobs={jobs}
+      >
+        {renderCurrentView()}
+        
+        <JobEditModal
+          job={selectedJob}
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedJob(null);
+          }}
+          onSave={handleJobSave}
+        />
+        
+        <JobViewModal
+          job={selectedJob}
+          isOpen={isViewModalOpen}
+          onClose={() => {
+            setIsViewModalOpen(false);
+            setSelectedJob(null);
+          }}
+          onJobUpdate={handleJobSave}
+        />
+      </AppLayout>
       
-      <JobEditModal
-        job={selectedJob}
-        isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setSelectedJob(null);
-        }}
-        onSave={handleJobSave}
+      {/* Floating Chatbot for AI-assisted job creation */}
+      <FloatingChatbot 
+        customers={customers}
+        onJobCreate={handleJobCreate}
       />
-    </AppLayout>
+    </>
   );
 }
