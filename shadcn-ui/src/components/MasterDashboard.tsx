@@ -7,8 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Job, Customer } from '@/types/job';
 import { getStatusColor, getPriorityColor } from '@/lib/jobUtils';
+import { useJobContext } from '@/hooks/useJobContext';
+import { useDashboard } from '@/hooks/useDashboard';
+import { useSettings } from '@/contexts/SettingsContext';
 import EngineerDashboard from '@/components/EngineerDashboard';
 import JobCard from '@/components/JobCard';
+import DashboardControlBar from '@/components/DashboardControlBar';
 import { 
   Search, 
   Filter, 
@@ -24,57 +28,39 @@ import {
   User,
   Phone,
   Settings,
-  Monitor
+  Monitor,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface MasterDashboardProps {
-  jobs: Job[];
-  customers: Customer[];
   onJobCreate: () => void;
   onJobClick: (job: Job) => void;
   onCustomerSelect: (customer: Customer) => void;
-  onAcceptJob?: (jobId: string, status: Job['status'], reason?: string) => void;
-  onDeclineJob?: (jobId: string, status: Job['status'], reason?: string) => void;
   onSwitchToEngineerMode?: () => void;
+  selectedEngineer?: string;
 }
 
 export default function MasterDashboard({ 
-  jobs, 
-  customers, 
   onJobCreate, 
   onJobClick,
   onCustomerSelect,
-  onAcceptJob,
-  onDeclineJob,
-  onSwitchToEngineerMode
+  onSwitchToEngineerMode,
+  selectedEngineer = 'John Smith' // Default engineer for demo
 }: MasterDashboardProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const { jobs, customers, engineers, getJobStats } = useJobContext();
+  const { settings } = useSettings();
+  const dashboard = useDashboard();
+  
   const [activeTab, setActiveTab] = useState<string>('portal');
+  const [currentSelectedEngineer, setCurrentSelectedEngineer] = useState<string>(selectedEngineer);
 
-  // Filter jobs based on search and filters
-  const filteredJobs = jobs.filter(job => {
-    const matchesSearch = searchTerm === '' || 
-      job.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.site.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.engineer.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
-    const matchesPriority = priorityFilter === 'all' || job.priority === priorityFilter;
-    
-    return matchesSearch && matchesStatus && matchesPriority;
-  });
+  // Calculate statistics from context
+  const stats = getJobStats();
 
-  // Calculate statistics
-  const stats = {
-    total: jobs.length,
-    active: jobs.filter(job => job.status === 'amber' || job.status === 'red').length,
-    completed: jobs.filter(job => job.status === 'green').length,
-    critical: jobs.filter(job => job.priority === 'Critical').length,
-    overdue: jobs.filter(job => job.status === 'red').length
-  };
+  // Get unique customer and engineer names for filters
+  const uniqueCustomers = Array.from(new Set(jobs.map(job => job.customer))).sort();
+  const uniqueEngineers = Array.from(new Set(jobs.map(job => job.engineer))).sort();
 
   // Generate end of shift report
   const generateEndOfShiftReport = () => {
@@ -161,7 +147,7 @@ export default function MasterDashboard({
               <Clock className="h-5 w-5 text-amber-600" />
               <div>
                 <p className="text-sm text-muted-foreground">Active</p>
-                <p className="text-2xl font-bold">{stats.active}</p>
+                <p className="text-2xl font-bold">{stats.pending}</p>
               </div>
             </div>
           </CardContent>
@@ -197,7 +183,7 @@ export default function MasterDashboard({
               <AlertTriangle className="h-5 w-5 text-red-600" />
               <div>
                 <p className="text-sm text-muted-foreground">Overdue</p>
-                <p className="text-2xl font-bold">{stats.overdue}</p>
+                <p className="text-2xl font-bold">{stats.red}</p>
               </div>
             </div>
           </CardContent>
@@ -251,44 +237,44 @@ export default function MasterDashboard({
       </Card>
 
       {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Search by customer, site, description, or engineer..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        
-        <div className="flex gap-2">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="green">Completed</SelectItem>
-              <SelectItem value="amber">In Progress</SelectItem>
-              <SelectItem value="red">Overdue</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Priority</SelectItem>
-              <SelectItem value="Critical">Critical</SelectItem>
-              <SelectItem value="High">High</SelectItem>
-              <SelectItem value="Medium">Medium</SelectItem>
-              <SelectItem value="Low">Low</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <DashboardControlBar
+        searchTerm={dashboard.filters.searchTerm}
+        onSearchChange={(value) => dashboard.updateFilter('searchTerm', value)}
+        statusFilter={dashboard.filters.statusFilter}
+        onStatusFilterChange={(value) => dashboard.updateFilter('statusFilter', value)}
+        priorityFilter={dashboard.filters.priorityFilter}
+        onPriorityFilterChange={(value) => dashboard.updateFilter('priorityFilter', value)}
+        customerFilter={dashboard.filters.customerFilter}
+        onCustomerFilterChange={(value) => dashboard.updateFilter('customerFilter', value)}
+        engineerFilter={dashboard.filters.engineerFilter}
+        onEngineerFilterChange={(value) => dashboard.updateFilter('engineerFilter', value)}
+        currentPage={dashboard.currentPage}
+        totalPages={dashboard.pagination.totalPages}
+        startIndex={dashboard.pagination.startIndex}
+        endIndex={dashboard.pagination.endIndex}
+        totalJobs={dashboard.totalJobs}
+        onPageChange={dashboard.goToPage}
+        onNextPage={dashboard.nextPage}
+        onPreviousPage={dashboard.previousPage}
+        jobsPerPage={dashboard.dashboardSettings.jobsPerPage}
+        onJobsPerPageChange={dashboard.setJobsPerPage}
+        sortBy={dashboard.dashboardSettings.sortBy}
+        onSortByChange={dashboard.setSortBy}
+        sortOrder={dashboard.dashboardSettings.sortOrder}
+        onSortOrderChange={dashboard.setSortOrder}
+        showCompletedJobs={dashboard.dashboardSettings.showCompletedJobs}
+        onToggleShowCompleted={dashboard.toggleShowCompletedJobs}
+        autoRefresh={dashboard.dashboardSettings.autoRefresh}
+        refreshInterval={dashboard.dashboardSettings.refreshInterval}
+        isAutoRefreshing={dashboard.isAutoRefreshing}
+        onToggleAutoRefresh={dashboard.toggleAutoRefresh}
+        onStartAutoRefresh={dashboard.startAutoRefresh}
+        onStopAutoRefresh={dashboard.stopAutoRefresh}
+        onRefreshData={dashboard.refreshData}
+        onClearFilters={dashboard.clearFilters}
+        customers={uniqueCustomers}
+        engineers={uniqueEngineers}
+      />
 
       {/* Customer Search */}
       <Card>
@@ -321,7 +307,7 @@ export default function MasterDashboard({
 
       {/* Jobs Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filteredJobs.map(job => (
+        {dashboard.jobs.map(job => (
           <JobCard
             key={job.id}
             job={job}
@@ -334,44 +320,82 @@ export default function MasterDashboard({
         ))}
       </div>
 
-      {filteredJobs.length === 0 && (
+      {dashboard.jobs.length === 0 && dashboard.totalJobs === 0 && (
         <div className="text-center py-12">
           <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
           <p className="text-muted-foreground">Try adjusting your search or filters</p>
         </div>
       )}
+
+      {dashboard.jobs.length === 0 && dashboard.totalJobs > 0 && (
+        <div className="text-center py-12">
+          <Filter className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs match your filters</h3>
+          <p className="text-muted-foreground mb-4">Try clearing your filters or adjusting your search criteria</p>
+          <Button onClick={dashboard.clearFilters} variant="outline">
+            Clear All Filters
+          </Button>
+        </div>
+      )}
         </TabsContent>
 
         {/* Engineer View Content */}
         <TabsContent value="engineer" className="space-y-6">
-          {onAcceptJob && onDeclineJob ? (
-            <div className="space-y-6">
-              <div className="flex items-center justify-end">
-                {onSwitchToEngineerMode && (
-                  <Button 
-                    onClick={onSwitchToEngineerMode}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <User className="h-4 w-4 mr-2" />
-                    Full Engineer Mode
-                  </Button>
-                )}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <User className="h-5 w-5 text-gray-500" />
+                  <Select value={currentSelectedEngineer} onValueChange={setCurrentSelectedEngineer}>
+                    <SelectTrigger className="w-[250px]">
+                      <SelectValue placeholder="Select Engineer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {engineers.map((engineer) => (
+                        <SelectItem key={engineer.name} value={engineer.name}>
+                          <div className="flex items-center space-x-2">
+                            <div className={`w-2 h-2 rounded-full ${
+                              engineer.status === 'accept' ? 'bg-green-500' :
+                              engineer.status === 'onsite' ? 'bg-blue-500' :
+                              engineer.status === 'travel' ? 'bg-yellow-500' :
+                              engineer.status === 'completed' ? 'bg-gray-400' :
+                              'bg-orange-500'
+                            }`} />
+                            <span>{engineer.name}</span>
+                            <span className="text-xs text-gray-500">({engineer.currentJobs} jobs)</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+              {onSwitchToEngineerMode && (
+                <Button 
+                  onClick={onSwitchToEngineerMode}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  Full Engineer Mode
+                </Button>
+              )}
+            </div>
+            
+            {currentSelectedEngineer ? (
               <EngineerDashboard
-                jobs={jobs}
-                onAcceptJob={onAcceptJob}
-                onDeclineJob={onDeclineJob}
+                engineerName={currentSelectedEngineer}
+                onBack={() => setActiveTab('portal')}
                 onJobClick={onJobClick}
               />
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <User className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Engineer View Not Available</h3>
-              <p className="text-muted-foreground">Engineer actions are not configured</p>
-            </div>
-          )}
+            ) : (
+              <div className="text-center py-12">
+                <User className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Engineer Selected</h3>
+                <p className="text-muted-foreground">Please select an engineer to view their dashboard</p>
+              </div>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
     </div>

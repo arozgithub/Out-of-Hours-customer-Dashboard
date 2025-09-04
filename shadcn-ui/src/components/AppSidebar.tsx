@@ -16,7 +16,8 @@ import {
   ChevronRight,
   Filter,
   User,
-  Palette
+  Palette,
+  Database
 } from 'lucide-react';
 
 import {
@@ -41,7 +42,7 @@ import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Job } from '@/types/job';
 
-type View = 'master' | 'customer' | 'alerts' | 'wizard' | 'customerList' | 'globalAlerts' | 'engineerPortal';
+type View = 'master' | 'customer' | 'alerts' | 'wizard' | 'customerList' | 'globalAlerts' | 'engineerPortal' | 'customerFilter' | 'engineerFilter' | 'dataManagement' | 'settings';
 
 interface AppSidebarProps {
   currentView: View;
@@ -87,6 +88,26 @@ export function AppSidebar({ currentView, onViewChange, jobCount = 0, alertCount
       icon: AlertTriangle,
       view: 'globalAlerts' as View,
       badge: alertCount > 0 ? alertCount.toString() : undefined,
+    },
+    {
+      title: 'Data Management',
+      icon: Database,
+      view: 'dataManagement' as View,
+    },
+  ];
+
+  const filterNavigation = [
+    {
+      title: 'Customer Jobs',
+      icon: Building2,
+      view: 'customerFilter' as View,
+      description: 'Filter jobs by customer',
+    },
+    {
+      title: 'Engineer Jobs',
+      icon: Wrench,
+      view: 'engineerFilter' as View,
+      description: 'Filter jobs by engineer',
     },
   ];
 
@@ -156,6 +177,33 @@ export function AppSidebar({ currentView, onViewChange, jobCount = 0, alertCount
                         {item.badge}
                       </Badge>
                     )}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Filter Dashboards */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="flex items-center gap-2">
+            <Filter className="h-3 w-3" />
+            Filter Views
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {filterNavigation.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    isActive={currentView === item.view}
+                    onClick={() => onViewChange(item.view)}
+                    className="w-full"
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <div className="flex flex-col">
+                      <span className="text-sm">{item.title}</span>
+                      <span className="text-xs text-muted-foreground">{item.description}</span>
+                    </div>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -250,7 +298,7 @@ export function AppSidebar({ currentView, onViewChange, jobCount = 0, alertCount
       <SidebarFooter className="border-t p-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton>
+            <SidebarMenuButton onClick={() => onViewChange('settings')}>
               <Settings className="h-4 w-4" />
               <span>Settings</span>
             </SidebarMenuButton>

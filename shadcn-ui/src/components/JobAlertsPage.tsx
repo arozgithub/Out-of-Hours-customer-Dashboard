@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Job, Customer } from '@/types/job';
 import { getStatusColor, getPriorityColor } from '@/lib/jobUtils';
+import { useNotifications } from '@/lib/notificationService';
 import { 
   ArrowLeft, 
   Search, 
@@ -15,7 +16,11 @@ import {
   MapPin,
   Phone,
   Smartphone,
-  User
+  User,
+  Bell,
+  BellRing,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 
 interface JobAlertsPageProps {
@@ -28,6 +33,146 @@ export default function JobAlertsPage({ customer, jobs, onBack }: JobAlertsPageP
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [alertHistory, setAlertHistory] = useState<Array<{
+    id: string;
+    type: string;
+    message: string;
+    timestamp: Date;
+    jobId?: string;
+    priority: 'low' | 'medium' | 'high' | 'critical';
+  }>>([]);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  const notifications = useNotifications();
+
+  // Monitor for critical jobs and send alerts
+  useEffect(() => {
+    const criticalJobs = jobs.filter(job => 
+      job.priority === 'Critical' && 
+      (job.status === 'red' || job.status === 'amber')
+    );
+
+    criticalJobs.forEach(job => {
+      const alertId = `${job.id}-${job.status}-${Date.now()}`;
+      const existingAlert = alertHistory.find(alert => 
+        alert.jobId === job.id && alert.type === `status-${job.status}`
+      );
+
+      if (!existingAlert) {
+        const alertMessage = `Job ${job.jobNumber} requires immediate attention - Status: ${job.status.toUpperCase()}`;
+        
+        // Add to alert history
+        setAlertHistory(prev => [...prev, {
+          id: alertId,
+          type: `status-${job.status}`,
+          message: alertMessage,
+          timestamp: new Date(),
+          jobId: job.id,
+          priority: job.status === 'red' ? 'critical' : 'high'
+        }]);
+
+        // Send notification
+        if (job.status === 'red') {
+          notifications.notifyEmergencyAlert(
+            job.jobNumber, 
+            customer.name, 
+            `Critical status - ${job.description}`
+          );
+        } else {
+          notifications.sendNotification({
+            type: 'emergency',
+            title: 'Job Alert',
+            message: alertMessage,
+            priority: 'high',
+            jobId: job.id,
+            customerId: customer.id
+          });
+        }
+      }
+    });
+  }, [jobs, customer, notifications, alertHistory]);
+
+  // Auto-notify on job completions
+  useEffect(() => {
+    const completedJobs = jobs.filter(job => job.status === 'completed');
+    
+    completedJobs.forEach(job => {
+      const alertId = `${job.id}-completed`;
+      const existingAlert = alertHistory.find(alert => 
+        alert.jobId === job.id && alert.type === 'completed'
+      );
+
+      if (!existingAlert) {
+        setAlertHistory(prev => [...prev, {
+          id: alertId,
+          type: 'completed',
+          message: `Job ${job.jobNumber} completed by ${job.engineer}`,
+          timestamp: new Date(),
+          jobId: job.id,
+          priority: 'low'
+        }]);
+
+        notifications.notifyJobCompletion(job.jobNumber, job.engineer, customer.name);
+      }
+    });
+  }, [jobs, customer, notifications, alertHistory]);
+
+  // Test notifications function
+  const handleTestNotifications = () => {
+    notifications.testNotifications();
+    
+    // Add test alert to history
+    setAlertHistory(prev => [...prev, {
+      id: `test-${Date.now()}`,
+      type: 'test',
+      message: 'Test notification sent - Check your notification settings',
+      timestamp: new Date(),
+      priority: 'medium'
+    }]);
+  };
+
+  // Clear alert history
+  const clearAlertHistory = () => {
+    setAlertHistory([]);
+  };
+
+  // Simulate engineer mobile sync notifications
+  const simulateEngineerSync = (jobId: string, engineerName: string, syncStatus: string) => {
+    const syncMessage = `${engineerName} mobile app sync: ${syncStatus}`;
+    
+    setAlertHistory(prev => [...prev, {
+      id: `sync-${jobId}-${Date.now()}`,
+      type: 'engineer-sync',
+      message: syncMessage,
+      timestamp: new Date(),
+      jobId,
+      priority: 'low' as const
+    }]);
+
+    notifications.sendNotification({
+      type: 'custom',
+      title: 'Engineer Mobile Sync',
+      message: syncMessage,
+      priority: 'low',
+      jobId,
+    });
+  };
+
+  // Trigger emergency alert for specific job
+  const triggerEmergencyAlert = (job: Job) => {
+    const emergencyMessage = `EMERGENCY: ${job.jobNumber} requires immediate attention`;
+    
+    setAlertHistory(prev => [...prev, {
+      id: `emergency-${job.id}-${Date.now()}`,
+      type: 'emergency',
+      message: emergencyMessage,
+      timestamp: new Date(),
+      jobId: job.id,
+      priority: 'critical' as const
+    }]);
+
+    notifications.notifyEmergencyAlert(job.jobNumber, customer.name, job.description);
+  };
 
   // Filter jobs based on search and filters
   const filteredJobs = jobs.filter(job => {
@@ -90,6 +235,52 @@ export default function JobAlertsPage({ customer, jobs, onBack }: JobAlertsPageP
         </div>
         
         <div className="p-4 space-y-4">
+          {/* Notification Controls */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <Bell className="h-4 w-4 text-purple-600" />
+                <span className="text-sm font-medium">Alerts Active</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  className="h-6 w-6 p-0"
+                >
+                  {soundEnabled ? 
+                    <Volume2 className="h-3 w-3 text-purple-600" /> : 
+                    <VolumeX className="h-3 w-3 text-gray-400" />
+                  }
+                </Button>
+                <BellRing className="h-4 w-4 text-purple-600" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTestNotifications}
+                className="w-full text-xs"
+              >
+                Test All Notifications
+              </Button>
+              
+              {alertHistory.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAlertHistory}
+                  className="w-full text-xs text-gray-500"
+                >
+                  Clear Alert History ({alertHistory.length})
+                </Button>
+              )}
+            </div>
+          </div>
+
           {/* Quick Stats */}
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
@@ -129,7 +320,39 @@ export default function JobAlertsPage({ customer, jobs, onBack }: JobAlertsPageP
                 {jobs.filter(job => job.priority === 'Critical').length}
               </span>
             </div>
+
+            <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <BellRing className="h-4 w-4 text-indigo-600" />
+                <span className="text-sm font-medium">Alerts Sent</span>
+              </div>
+              <span className="text-lg font-bold text-indigo-600">
+                {alertHistory.length}
+              </span>
+            </div>
           </div>
+
+          {/* Notification Activity Feed */}
+          {alertHistory.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Recent Activity</h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {alertHistory.slice(-10).reverse().map(alert => (
+                  <div 
+                    key={alert.id}
+                    className="p-2 text-xs bg-gray-50 rounded border-l-2 border-l-gray-300"
+                  >
+                    <div className="font-medium text-gray-900 truncate">
+                      {alert.message}
+                    </div>
+                    <div className="text-gray-500">
+                      {alert.timestamp.toLocaleTimeString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -138,9 +361,81 @@ export default function JobAlertsPage({ customer, jobs, onBack }: JobAlertsPageP
         <div className="p-6">
           {/* Header */}
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">Job Alerts - {customer.name}</h1>
-            <p className="text-gray-600">Monitor job status and engineer mobile app sync</p>
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Job Alerts - {customer.name}</h1>
+                <p className="text-gray-600">Monitor job status and engineer mobile app sync</p>
+              </div>
+              
+              {/* Real-time Alert Badge */}
+              <div className="flex items-center space-x-4">
+                {alertHistory.length > 0 && (
+                  <div className="flex items-center space-x-2 px-3 py-1 bg-red-100 text-red-800 rounded-full">
+                    <BellRing className="h-4 w-4" />
+                    <span className="text-sm font-medium">{alertHistory.length} Active Alerts</span>
+                  </div>
+                )}
+                
+                <div className="flex items-center space-x-2 px-3 py-1 bg-green-100 text-green-800 rounded-full">
+                  <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium">Live Monitoring</span>
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* Alert History Panel */}
+          {alertHistory.length > 0 && (
+            <Card className="mb-6 border-amber-200 bg-amber-50">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg text-amber-800">Recent Alerts</CardTitle>
+                  <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+                    {alertHistory.length} alerts
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 max-h-40 overflow-y-auto">
+                  {alertHistory.slice(-5).reverse().map(alert => (
+                    <div 
+                      key={alert.id}
+                      className={`flex items-center justify-between p-3 rounded-lg ${
+                        alert.priority === 'critical' ? 'bg-red-100 border border-red-200' :
+                        alert.priority === 'high' ? 'bg-orange-100 border border-orange-200' :
+                        alert.priority === 'medium' ? 'bg-blue-100 border border-blue-200' :
+                        'bg-gray-100 border border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-2 h-2 rounded-full ${
+                          alert.priority === 'critical' ? 'bg-red-600' :
+                          alert.priority === 'high' ? 'bg-orange-600' :
+                          alert.priority === 'medium' ? 'bg-blue-600' :
+                          'bg-gray-600'
+                        }`}></div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{alert.message}</p>
+                          <p className="text-xs text-gray-600">
+                            {alert.timestamp.toLocaleTimeString()} • {alert.type}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {alert.jobId && (
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs"
+                        >
+                          Job ID: {alert.jobId}
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Filters */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -204,19 +499,42 @@ export default function JobAlertsPage({ customer, jobs, onBack }: JobAlertsPageP
                       <th className="text-left p-4 font-medium text-gray-900">Priority</th>
                       <th className="text-left p-4 font-medium text-gray-900">Site</th>
                       <th className="text-left p-4 font-medium text-gray-900">Created</th>
+                      <th className="text-left p-4 font-medium text-gray-900">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredJobs.map(job => (
-                      <tr key={job.id} className="border-b hover:bg-gray-50">
-                        <td className="p-4">
-                          <div>
-                            <div className="font-medium text-gray-900">{job.jobNumber}</div>
-                            <div className="text-sm text-gray-600 truncate max-w-xs">
-                              {job.description}
+                    {filteredJobs.map(job => {
+                      const hasAlert = alertHistory.some(alert => alert.jobId === job.id);
+                      const criticalAlert = alertHistory.find(alert => 
+                        alert.jobId === job.id && alert.priority === 'critical'
+                      );
+                      
+                      return (
+                        <tr key={job.id} className={`border-b hover:bg-gray-50 ${
+                          criticalAlert ? 'bg-red-50' : hasAlert ? 'bg-amber-50' : ''
+                        }`}>
+                          <td className="p-4">
+                            <div className="flex items-center space-x-2">
+                              {hasAlert && (
+                                <div className="flex items-center">
+                                  <BellRing className={`h-4 w-4 ${
+                                    criticalAlert ? 'text-red-600' : 'text-amber-600'
+                                  }`} />
+                                </div>
+                              )}
+                              <div>
+                                <div className="font-medium text-gray-900">{job.jobNumber}</div>
+                                <div className="text-sm text-gray-600 truncate max-w-xs">
+                                  {job.description}
+                                </div>
+                                {hasAlert && (
+                                  <div className="text-xs text-amber-600 font-medium">
+                                    Alert triggered
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </td>
+                          </td>
                         <td className="p-4">
                           <div className="flex items-center space-x-2">
                             <User className="h-4 w-4 text-gray-400" />
@@ -271,8 +589,34 @@ export default function JobAlertsPage({ customer, jobs, onBack }: JobAlertsPageP
                             {new Date(job.createdAt).toLocaleTimeString()}
                           </div>
                         </td>
+                        <td className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => simulateEngineerSync(job.id, job.engineer, 'Status updated')}
+                              className="text-xs"
+                            >
+                              <Smartphone className="h-3 w-3 mr-1" />
+                              Sync
+                            </Button>
+                            
+                            {(job.priority === 'Critical' || job.status === 'red') && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => triggerEmergencyAlert(job)}
+                                className="text-xs"
+                              >
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Alert
+                              </Button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
 

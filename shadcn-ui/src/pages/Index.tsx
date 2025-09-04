@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Job, Customer } from '@/types/job';
-import { useJob } from '@/hooks/useJob';
-import { mockEngineers } from '@/lib/jobUtils';
+import { useJobContext } from '@/hooks/useJobContext';
+import { mockCustomers, mockEngineers } from '@/lib/jobUtils';
 import MasterDashboard from '@/components/MasterDashboard';
 import CustomerDashboard from '@/components/CustomerDashboard';
 import CustomerAlertsPortal from '@/components/CustomerAlertsPortal';
@@ -13,13 +13,17 @@ import CustomerListPage from '@/pages/CustomerListPage';
 import Dashboard from '@/components/Dashboard';
 import EngineerInterface from '@/components/EngineerInterface';
 import FloatingChatbot from '@/components/FloatingChatbot';
+import DataMigrationPanel from '@/components/DataMigrationPanel';
+import { CustomerFilterDashboard } from '@/components/CustomerFilterDashboard';
+import { EngineerFilterDashboard } from '@/components/EngineerFilterDashboard';
+import SettingsPage from '@/components/SettingsPage';
 import { AppLayout } from '@/components/AppLayout';
 
-type View = 'master' | 'customer' | 'alerts' | 'wizard' | 'customerList' | 'globalAlerts' | 'engineerPortal' | 'engineerMode';
+type View = 'master' | 'customer' | 'alerts' | 'wizard' | 'customerList' | 'globalAlerts' | 'engineerPortal' | 'engineerMode' | 'dataManagement' | 'customerFilter' | 'engineerFilter' | 'settings';
 
 export default function Index() {
   // Use JobContext instead of local state
-  const { jobs, customers, addJob, updateJob } = useJob();
+  const { jobs, customers, addJob, updateJob } = useJobContext();
   
   const [currentView, setCurrentView] = useState<View>('master');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -112,10 +116,18 @@ export default function Index() {
         return selectedCustomer ? `${selectedCustomer.name} - Alerts` : 'Customer Alerts';
       case 'globalAlerts':
         return 'Global Alerts Portal';
+      case 'dataManagement':
+        return 'Data Management';
+      case 'customerFilter':
+        return 'Customer Jobs Filter';
+      case 'engineerFilter':
+        return 'Engineer Jobs Filter';
       case 'engineerPortal':
         return 'Engineer Portal';
       case 'engineerMode':
         return 'Engineer Interface';
+      case 'settings':
+        return 'Settings';
       default:
         return undefined;
     }
@@ -126,13 +138,9 @@ export default function Index() {
       case 'master':
         return (
           <MasterDashboard
-            jobs={jobs}
-            customers={customers}
             onJobCreate={() => setCurrentView('wizard')}
             onJobClick={handleJobClick}
             onCustomerSelect={handleCustomerSelect}
-            onAcceptJob={handleAcceptJob}
-            onDeclineJob={handleDeclineJob}
             onSwitchToEngineerMode={handleSwitchToEngineerMode}
           />
         );
@@ -150,14 +158,10 @@ export default function Index() {
       case 'customer':
         return selectedCustomer ? (
           <CustomerDashboard
-            customer={selectedCustomer}
-            jobs={jobs}
-            engineers={mockEngineers}
+            customerName={selectedCustomer.name}
             onBack={() => setCurrentView('customerList')}
             onJobClick={handleJobClick}
             onAlertsPortal={() => setCurrentView('alerts')}
-            onJobAssign={handleJobAssign}
-            onJobUpdate={handleJobUpdate}
           />
         ) : null;
       
@@ -175,6 +179,29 @@ export default function Index() {
           <GlobalAlertsPortal
             jobs={jobs}
             customers={customers}
+          />
+        );
+      
+      case 'dataManagement':
+        return <DataMigrationPanel />;
+      
+      case 'customerFilter':
+        return (
+          <CustomerFilterDashboard
+            onJobClick={handleJobClick}
+            onUpdateStatus={(jobId, status, reason) => {
+              updateJob(jobId, { status, reason });
+            }}
+          />
+        );
+      
+      case 'engineerFilter':
+        return (
+          <EngineerFilterDashboard
+            onJobClick={handleJobClick}
+            onUpdateStatus={(jobId, status, reason) => {
+              updateJob(jobId, { status, reason });
+            }}
           />
         );
       
@@ -209,6 +236,9 @@ export default function Index() {
             onCancel={() => setCurrentView('master')}
           />
         );
+      
+      case 'settings':
+        return <SettingsPage />;
       
       default:
         return null;

@@ -200,9 +200,8 @@ export default function Dashboard({ jobs, onUpdateStatus, onAcceptJob, onDecline
           
           {onAcceptJob && onDeclineJob ? (
             <EngineerDashboard
-              jobs={jobs}
-              onAcceptJob={onAcceptJob}
-              onDeclineJob={onDeclineJob}
+              engineerName="John Smith" // Default engineer for demo
+              onBack={() => setViewMode('portal')}
               onJobClick={onJobClick}
             />
           ) : (

@@ -4,7 +4,7 @@ import { Separator } from '@/components/ui/separator';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from '@/components/ui/breadcrumb';
 import { Job } from '@/types/job';
 
-type View = 'master' | 'customer' | 'alerts' | 'wizard' | 'customerList' | 'globalAlerts' | 'engineerPortal';
+type View = 'master' | 'customer' | 'alerts' | 'wizard' | 'customerList' | 'globalAlerts' | 'engineerPortal' | 'dataManagement' | 'customerFilter' | 'engineerFilter' | 'settings';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -28,10 +28,18 @@ const getViewTitle = (view: View): string => {
       return 'Customer Alerts';
     case 'globalAlerts':
       return 'Global Alerts Portal';
+    case 'dataManagement':
+      return 'Data Management';
+    case 'customerFilter':
+      return 'Customer Jobs Filter';
+    case 'engineerFilter':
+      return 'Engineer Jobs Filter';
     case 'wizard':
       return 'Create New Job';
     case 'engineerPortal':
       return 'Engineer Portal';
+    case 'settings':
+      return 'Settings';
     default:
       return 'Dashboard';
   }

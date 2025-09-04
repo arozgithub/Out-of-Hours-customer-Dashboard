@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Job, Customer, Engineer } from '@/types/job';
 import { getStatusColor, getPriorityColor } from '@/lib/jobUtils';
+import { useJobContext } from '@/hooks/useJobContext';
 import CalendarPlanner from '@/components/CalendarPlanner';
 import { 
   ArrowLeft, 
@@ -18,44 +19,76 @@ import {
   Mail,
   Calendar,
   FileText,
-  CalendarDays
+  CalendarDays,
+  TrendingUp,
+  Activity
 } from 'lucide-react';
 
 interface CustomerDashboardProps {
-  customer: Customer;
-  jobs: Job[];
-  engineers: Engineer[];
+  customerName: string;
   onBack: () => void;
   onJobClick: (job: Job) => void;
   onAlertsPortal: () => void;
-  onJobAssign?: (jobId: string, engineerId: string, date: Date) => void;
-  onJobUpdate?: (job: Job) => void;
 }
 
 export default function CustomerDashboard({ 
-  customer, 
-  jobs, 
-  engineers, 
+  customerName, 
   onBack, 
   onJobClick,
-  onAlertsPortal,
-  onJobAssign = () => {},
-  onJobUpdate = () => {}
+  onAlertsPortal
 }: CustomerDashboardProps) {
+  const { 
+    jobs, 
+    customers, 
+    engineers,
+    getJobsByCustomer,
+    getCustomerByName,
+    getCustomerStats,
+    updateJob
+  } = useJobContext();
+  
   const [selectedSite, setSelectedSite] = useState<string>('all');
 
-  // Filter jobs for this customer
-  const customerJobs = jobs.filter(job => job.customer === customer.name);
+  // Get customer data from context
+  const customer = getCustomerByName(customerName);
+  if (!customer) {
+    return (
+      <div className="text-center py-12">
+        <Building2 className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Customer not found</h3>
+        <p className="text-muted-foreground">The customer "{customerName}" could not be found.</p>
+        <Button onClick={onBack} className="mt-4">
+          <ArrowLeft size={16} className="mr-2" />
+          Back to Dashboard
+        </Button>
+      </div>
+    );
+  }
+
+  // Get jobs and stats from context
+  const customerJobs = getJobsByCustomer(customerName);
+  const customerStats = getCustomerStats(customerName);
+  
   const filteredJobs = selectedSite === 'all' 
     ? customerJobs 
     : customerJobs.filter(job => job.site === selectedSite);
 
-  // Calculate statistics
-  const stats = {
-    total: customerJobs.length,
-    active: customerJobs.filter(job => job.status === 'amber' || job.status === 'red').length,
-    completed: customerJobs.filter(job => job.status === 'green').length,
-    overdue: customerJobs.filter(job => job.status === 'red').length
+  // Get unique sites from customer jobs
+  const customerSites = [...new Set(customerJobs.map(job => job.site))];
+
+  const handleJobAssign = (jobId: string, engineerId: string, date: Date) => {
+    const engineer = engineers.find(e => e.name === engineerId);
+    if (engineer) {
+      updateJob(jobId, { 
+        engineer: engineer.name,
+        dateAccepted: date,
+        status: 'amber' as Job['status']
+      });
+    }
+  };
+
+  const handleJobUpdate = (job: Job) => {
+    updateJob(job.id, job);
   };
 
   return (
@@ -82,14 +115,14 @@ export default function CustomerDashboard({
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <FileText className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Jobs</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+                <p className="text-2xl font-bold">{customerStats.totalJobs}</p>
               </div>
             </div>
           </CardContent>
@@ -100,8 +133,8 @@ export default function CustomerDashboard({
             <div className="flex items-center space-x-2">
               <Clock className="h-5 w-5 text-amber-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Active</p>
-                <p className="text-2xl font-bold">{stats.active}</p>
+                <p className="text-sm text-muted-foreground">Pending</p>
+                <p className="text-2xl font-bold">{customerStats.pendingJobs}</p>
               </div>
             </div>
           </CardContent>
@@ -113,7 +146,7 @@ export default function CustomerDashboard({
               <CheckCircle className="h-5 w-5 text-green-600" />
               <div>
                 <p className="text-sm text-muted-foreground">Completed</p>
-                <p className="text-2xl font-bold">{stats.completed}</p>
+                <p className="text-2xl font-bold">{customerStats.completedJobs}</p>
               </div>
             </div>
           </CardContent>
@@ -124,8 +157,30 @@ export default function CustomerDashboard({
             <div className="flex items-center space-x-2">
               <AlertTriangle className="h-5 w-5 text-red-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Overdue</p>
-                <p className="text-2xl font-bold">{stats.overdue}</p>
+                <p className="text-sm text-muted-foreground">Critical</p>
+                <p className="text-2xl font-bold">{customerStats.criticalJobs}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Activity className="h-5 w-5 text-purple-600" />
+              <div>
+                <p className="text-sm text-muted-foreground">Status</p>
+                <div className="flex gap-1 mt-1">
+                  <Badge variant="destructive" className="text-xs px-1">
+                    R: {customerStats.statusBreakdown.red}
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs px-1 bg-amber-100 text-amber-800">
+                    A: {customerStats.statusBreakdown.amber}
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs px-1 bg-green-100 text-green-800">
+                    G: {customerStats.statusBreakdown.green}
+                  </Badge>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -147,7 +202,7 @@ export default function CustomerDashboard({
 
         <TabsContent value="overview" className="space-y-6">
           {/* Site Filter */}
-          {customer.sites && customer.sites.length > 1 && (
+          {customerSites.length > 1 && (
             <Card>
               <CardHeader>
                 <CardTitle>Filter by Site</CardTitle>
@@ -161,7 +216,7 @@ export default function CustomerDashboard({
                   >
                     All Sites ({customerJobs.length})
                   </Button>
-                  {customer.sites.map(site => {
+                  {customerSites.map(site => {
                     const siteJobCount = customerJobs.filter(job => job.site === site).length;
                     return (
                       <Button
@@ -172,12 +227,12 @@ export default function CustomerDashboard({
                       >
                         {site} ({siteJobCount})
                       </Button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
       {/* Active Jobs */}
       <Card>
@@ -344,10 +399,10 @@ export default function CustomerDashboard({
 
         <TabsContent value="planner" className="space-y-6">
           <CalendarPlanner
-            jobs={jobs}
+            jobs={customerJobs}
             customer={customer.name}
-            onJobAssign={onJobAssign}
-            onJobUpdate={onJobUpdate}
+            onJobAssign={handleJobAssign}
+            onJobUpdate={handleJobUpdate}
           />
         </TabsContent>
       </Tabs>

@@ -3,7 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Job } from '@/types/job';
+import { useJobContext } from '@/hooks/useJobContext';
 import EngineerDashboard from '@/components/EngineerDashboard';
 import { 
   User, 
@@ -30,14 +32,20 @@ export default function EngineerInterface({
   onDeclineJob,
   onBackToPortal 
 }: EngineerInterfaceProps) {
+  const { engineers } = useJobContext();
   const [activeTab, setActiveTab] = useState('jobs');
+  const [selectedEngineer, setSelectedEngineer] = useState<string>(engineers[0]?.name || '');
 
+  // Add default fallback if no engineer is selected
+  const currentEngineer = selectedEngineer || (engineers.length > 0 ? engineers[0].name : '');
+  
   // Engineer-specific job stats
+  const engineerJobs = jobs.filter(job => job.engineer === currentEngineer);
   const engineerStats = {
-    total: jobs.length,
-    pending: jobs.filter(job => job.status === 'amber').length,
-    accepted: jobs.filter(job => job.status === 'green').length,
-    completed: jobs.filter(job => job.status === 'completed').length,
+    total: engineerJobs.length,
+    pending: engineerJobs.filter(job => job.status === 'red').length, // Jobs waiting for engineer response
+    accepted: engineerJobs.filter(job => job.status === 'amber').length, // Jobs accepted and in progress
+    completed: engineerJobs.filter(job => job.status === 'green').length, // Jobs completed
   };
 
   return (
@@ -54,6 +62,34 @@ export default function EngineerInterface({
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">Engineer Portal</h1>
                 <p className="text-sm text-gray-500">Job Management Interface</p>
+              </div>
+            </div>
+
+            {/* Engineer Selection */}
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <User className="h-4 w-4 text-gray-500" />
+                <Select value={currentEngineer} onValueChange={setSelectedEngineer}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Select Engineer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {engineers.map((engineer) => (
+                      <SelectItem key={engineer.name} value={engineer.name}>
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-2 h-2 rounded-full ${
+                            engineer.status === 'accept' ? 'bg-green-500' :
+                            engineer.status === 'onsite' ? 'bg-blue-500' :
+                            engineer.status === 'travel' ? 'bg-yellow-500' :
+                            engineer.status === 'completed' ? 'bg-gray-400' :
+                            'bg-orange-500'
+                          }`} />
+                          <span>{engineer.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -163,9 +199,8 @@ export default function EngineerInterface({
             </div>
 
             <EngineerDashboard
-              jobs={jobs}
-              onAcceptJob={onAcceptJob}
-              onDeclineJob={onDeclineJob}
+              engineerName={currentEngineer}
+              onBack={onBackToPortal}
             />
           </TabsContent>
 
@@ -177,7 +212,7 @@ export default function EngineerInterface({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {jobs.filter(job => job.status === 'completed').map(job => (
+                  {jobs.filter(job => job.engineer === currentEngineer && job.status === 'green').map(job => (
                     <div key={job.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div>
                         <p className="font-medium">{job.jobNumber}</p>
@@ -189,7 +224,7 @@ export default function EngineerInterface({
                       </Badge>
                     </div>
                   ))}
-                  {jobs.filter(job => job.status === 'completed').length === 0 && (
+                  {jobs.filter(job => job.engineer === currentEngineer && job.status === 'green').length === 0 && (
                     <div className="text-center py-8">
                       <CheckCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                       <p className="text-gray-500">No completed jobs yet</p>
